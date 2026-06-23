@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meraki Guest Manager - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #f8fafb 0%, #eef2f5 100%); min-height: 100vh; padding: 20px; color: #1f2937; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 40px; animation: slideDown 0.6s ease-out; }
+        header h1 { font-size: 2.5rem; font-weight: 700; color: #2e3b8c; margin-bottom: 8px; letter-spacing: -0.5px; }
+        header p { font-size: 1rem; color: #6b7280; font-weight: 400; }
+        .controls { display: flex; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; justify-content: center; }
+        .input-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        input[type="text"], input[type="email"], input[type="number"], select { padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.95rem; background: white; transition: all 0.3s ease; font-family: inherit; }
+        input[type="text"]:focus, input[type="email"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: #2e3b8c; box-shadow: 0 0 0 3px rgba(46, 59, 140, 0.1); }
+        input[type="text"] { min-width: 200px; }
+        button { padding: 10px 20px; background: #2e3b8c; color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; font-family: inherit; }
+        button:hover { background: #1f2a5c; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(46, 59, 140, 0.3); }
+        button:active { transform: translateY(0); }
+        .btn-secondary { background: #f0f0f0; color: #1f2937; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        .btn-refresh { background: #00d9d9; color: #2e3b8c; }
+        .btn-refresh:hover { background: #00bfbf; }
+        .btn-refresh.active { background: #10b981; color: white; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); border-left: 4px solid #2e3b8c; animation: fadeInUp 0.6s ease-out; transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
+        .stat-card.connected { border-left-color: #10b981; }
+        .stat-card.disconnected { border-left-color: #ef4444; }
+        .stat-label { font-size: 0.85rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #1f2937; }
+        .table-wrapper { background: white; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); overflow: hidden; animation: fadeInUp 0.8s ease-out; }
+        .table-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .table-header h2 { font-size: 1.3rem; font-weight: 700; color: #1f2937; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: linear-gradient(135deg, #2e3b8c 0%, #1f2a5c 100%); color: white; }
+        th { padding: 16px; text-align: left; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.3px; text-transform: uppercase; }
+        tbody tr { border-bottom: 1px solid #f0f0f0; transition: all 0.3s ease; }
+        tbody tr:hover { background-color: #f9fafb; }
+        td { padding: 16px; font-size: 0.95rem; color: #374151; }
+        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
+        .status-badge.connected { background: #d1fae5; color: #065f46; }
+        .status-badge.disconnected { background: #fee2e2; color: #7f1d1d; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.connected { background: #10b981; animation: pulse 2s infinite; }
+        .status-dot.disconnected { background: #ef4444; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .loading { text-align: center; padding: 40px; color: #6b7280; }
+        .loading::after { content: ''; display: inline-block; width: 20px; height: 20px; border: 3px solid #e5e7eb; border-top-color: #2e3b8c; border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error { background: #fee2e2; color: #7f1d1d; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ef4444; display: none; animation: slideDown 0.3s ease-out; }
+        .error.show { display: block; }
+        .success { background: #d1fae5; color: #065f46; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981; display: none; animation: slideDown 0.3s ease-out; }
+        .success.show { display: block; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 15px; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .footer { text-align: center; margin-top: 40px; color: #9ca3af; font-size: 0.9rem; }
+        
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); animation: fadeIn 0.3s ease; overflow-y: auto; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 15px; }
+        .modal-header h2 { color: #1f2937; font-size: 1.5rem; font-weight: 700; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+        .close-btn:hover { color: #1f2937; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #1f2937; font-weight: 600; font-size: 0.9rem; }
+        .form-group input, .form-group select { width: 100%; }
+        .form-group input[type="checkbox"] { width: auto; margin-right: 8px; }
+        .checkbox-label { display: flex; align-items: center; cursor: pointer; font-size: 0.95rem; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.8rem; }
+            .controls { flex-direction: column; }
+            .input-group { width: 100%; }
+            input[type="text"] { width: 100%; min-width: unset; }
+            button { width: 100%; justify-content: center; }
+            .stats { grid-template-columns: 1fr; }
+            table { font-size: 0.85rem; }
+            th, td { padding: 12px 8px; }
+            .table-header { flex-direction: column; align-items: flex-start; }
+            .modal-content { width: 95%; margin: 20% auto; padding: 20px; }
+            .modal-header h2 { font-size: 1.2rem; }
+        }
+        
+        code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Meraki Guest Manager</h1>
+            <p>Monitorea el estado de conexión de tus usuarios invitados en tiempo real</p>
+        </header>
+        
+        <!-- Messages -->
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+        
+        <div class="controls">
+            <div class="input-group">
+                <input type="text" id="networkId" placeholder="Ingresa el Network ID..." value="">
+                <button onclick="loadUsers()"><span>↻</span><span>Cargar Usuarios</span></button>
+            </div>
+            <input type="text" id="searchInput" placeholder="Buscar por nombre, email..." style="flex: 1; min-width: 200px;">
+            <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="btn-refresh"><span>⏱</span><span>Auto-actualizar</span></button>
+            <button onclick="openModal()" class="btn-success"><span>➕</span><span>Crear Acceso</span></button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card"><div class="stat-label">Total Usuarios</div><div class="stat-value" id="totalUsers">0</div></div>
+            <div class="stat-card connected"><div class="stat-label">Conectados</div><div class="stat-value" id="connectedCount">0</div></div>
+            <div class="stat-card disconnected"><div class="stat-label">Desconectados</div><div class="stat-value" id="disconnectedCount">0</div></div>
+        </div>
+        
+        <div class="table-wrapper">
+            <div class="table-header">
+                <h2>Usuarios Registrados</h2>
+                <button class="btn-secondary" onclick="loadUsers()">🔄 Actualizar</button>
+            </div>
+            <div id="tableContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <h3>Ingresa un Network ID para comenzar</h3>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer"><p>Meraki Guest Manager • API v1 • Última actualización: <span id="lastUpdate">-</span></p></div>
+    </div>
+
+    <!-- Modal para crear acceso invitado -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Crear Acceso Invitado</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form onsubmit="createGuestAccess(event)">
+                <div class="form-group">
+                    <label for="modalNetworkId">Network ID *</label>
+                    <input type="text" id="modalNetworkId" required placeholder="Ej: L_123456789">
+                </div>
+                <div class="form-group">
+                    <label for="guestName">Nombre *</label>
+                    <input type="text" id="guestName" required placeholder="Ej: Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label for="guestEmail">Email *</label>
+                    <input type="email" id="guestEmail" required placeholder="Ej: juan@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="guestDuration">Duración (minutos) *</label>
+                    <input type="number" id="guestDuration" required value="60" min="1" placeholder="60">
+                </div>
+                <div class="form-group">
+                    <label for="guestSSID">Número SSID *</label>
+                    <input type="number" id="guestSSID" required value="0" min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="emailPassword" checked>
+                        <span>Enviar contraseña por email</span>
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit">Crear Acceso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Configuración - CAMBIAR SEGÚN TU ENTORNO
+        const API_BASE_URL = 'http://127.0.0.1:5000'; // Cambiar a tu URL de API
+        let autoRefreshInterval = null;
+        let autoRefreshEnabled = false;
+        let allUsers = [];
+
+        // Mostrar mensajes
+        function showMessage(type, message) {
+            const msgElement = document.getElementById(type);
+            msgElement.textContent = message;
+            msgElement.classList.add('show');
+            
+            if (type !== 'error') {
+                setTimeout(() => msgElement.classList.remove('show'), 3000);
+            }
+        }
+
+        function clearMessages() {
+            document.getElementById('error').classList.remove('show');
+            document.getElementById('success').classList.remove('show');
+        }
+
+        // Cargar usuarios
+        async function loadUsers() {
+            const networkId = document.getElementById('networkId').value.trim();
+            if (!networkId) {
+                showMessage('error', 'Por favor ingresa un Network ID');
+                return;
+            }
+
+            clearMessages();
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/list_guest_access/${networkId}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Error ${response.status}`);
+                }
+
+                const data = await response.json();
+                allUsers = data.users || [];
+                displayUsers();
+                localStorage.setItem('lastNetworkId', networkId);
+                showMessage('success', `✅ Se cargaron ${allUsers.length} usuarios correctamente`);
+                updateLastUpdate();
+
+            } catch (error) {
+                showMessage('error', `Error al cargar usuarios: ${error.message}`);
+                showEmptyState();
+            }
+        }
+
+        // Mostrar usuarios
+        function displayUsers() {
+            const container = document.getElementById('tableContainer');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            const filteredUsers = allUsers.filter(user =>
+                (user.name && user.name.toLowerCase().includes(searchTerm)) ||
+                (user.email && user.email.toLowerCase().includes(searchTerm))
+            );
+
+            // Actualizar estadísticas
+            document.getElementById('totalUsers').textContent = allUsers.length;
+            document.getElementById('connectedCount').textContent = allUsers.filter(u => u.status === 'Conectado').length;
+            document.getElementById('disconnectedCount').textContent = allUsers.filter(u => u.status === 'Desconectado').length;
+
+            if (filteredUsers.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">${searchTerm ? '🔍' : '👥'}</div>
+                        <h3>${searchTerm ? 'No se encontraron resultados' : 'No hay usuarios registrados'}</h3>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Estado</th>
+                            <th>Dispositivo MAC</th>
+                            <th>Vencimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            filteredUsers.forEach(user => {
+                const statusClass = user.status === 'Conectado' ? 'connected' : 'disconnected';
+                html += `
+                    <tr>
+                        <td><strong>${user.name || 'N/A'}</strong></td>
+                        <td>${user.email || 'N/A'}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">
+                                <span class="status-dot ${statusClass}"></span>
+                                ${user.status}
+                            </span>
+                        </td>
+                        <td><code>${user.device_mac || 'N/A'}</code></td>
+                        <td>${formatDate(user.expiration_date)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function showLoading() {
+            document.getElementById('tableContainer').innerHTML = '<div class="loading">Cargando usuarios...</div>';
+        }
+
+        function showEmptyState() {
+            document.getElementById('tableContainer').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">❌</div>
+                    <h3>Error al cargar usuarios</h3>
+                </div>
+            `;
+        }
+
+        // Modal
+        function openModal() {
+            const networkId = document.getElementById('networkId').value;
+            if (networkId) {
+                document.getElementById('modalNetworkId').value = networkId;
+            }
+            document.getElementById('createModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('createModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('createModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Crear acceso invitado
+        async function createGuestAccess(event) {
+            event.preventDefault();
+
+            const networkId = document.getElementById('modalNetworkId').value;
+            const name = document.getElementById('guestName').value;
+            const email = document.getElementById('guestEmail').value;
+            const duration = parseInt(document.getElementById('guestDuration').value);
+            const ssid = parseInt(document.getElementById('guestSSID').value);
+            const emailPassword = document.getElementById('emailPassword').checked;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/create_guest_access`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        network_id: networkId,
+                        name: name,
+                        email: email,
+                        duration_minutes: duration,
+                        ssid_number: ssid,
+                        email_password_to_user: emailPassword
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Error ${response.status}`);
+                }
+
+                showMessage('success', `✅ Acceso invitado creado para ${email}`);
+                closeModal();
+                document.querySelector('form').reset();
+                loadUsers();
+
+            } catch (error) {
+                showMessage('error', `Error: ${error.message}`);
+            }
+        }
+
+        // Auto-actualizar
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const btn = document.getElementById('autoRefreshBtn');
+
+            if (autoRefreshEnabled) {
+                btn.classList.add('active');
+                autoRefreshInterval = setInterval(loadUsers, 10000);
+                showMessage('success', '⏱ Auto-actualización activada (cada 10 segundos)');
+            } else {
+                btn.classList.remove('active');
+                clearInterval(autoRefreshInterval);
+                showMessage('success', '⏱ Auto-actualización desactivada');
+            }
+        }
+
+        // Búsqueda en tiempo real
+        document.getElementById('searchInput').addEventListener('keyup', () => {
+            if (allUsers.length > 0) {
+                displayUsers();
+            }
+        });
+
+        // Formatear fecha
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'N/A') return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch {
+                return dateString;
+            }
+        }
+
+        // Actualizar timestamp
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('es-ES');
+        }
+
+        // Inicializar
+        window.addEventListener('load', () => {
+            const lastId = localStorage.getItem('lastNetworkId');
+            if (lastId) {
+                document.getElementById('networkId').value = lastId;
+            }
+        });
+    </script>
+</body>
+</html>
